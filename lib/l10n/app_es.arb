@@ -1,0 +1,45 @@
+{
+  "@@locale": "es",
+  "appTitle": "HefestoCS",
+
+  "home_label": "Inicio",
+  "training_label": "Entrenamiento",
+  "nutrition_label": "Nutrición",
+  "progress_label": "Progreso",
+
+  "progress_title": "Fotos de Progreso",
+  "progress_add": "Agregar",
+  "progress_pick_gallery": "Elegir de galería",
+  "progress_pick_camera": "Capturar con cámara",
+  "progress_quick_filters": "Filtros rápidos (Hefesto)",
+
+  "snack_added_gallery": "Imagen agregada desde galería",
+  "snack_captured": "Foto capturada",
+  "snack_deleted": "Foto eliminada",
+  "snack_saved_gallery": "Guardado en galería",
+  "snack_saved_gallery_fail": "No se pudo guardar en galería",
+  "snack_perm_denied": "Permisos denegados. Actívalos en Ajustes.",
+  "snack_cant_open_gallery": "No se pudo abrir la galería",
+  "snack_cant_open_camera": "No se pudo abrir la cámara",
+  "snack_edit_applied": "Edición aplicada",
+  "snack_filter_applied": "Filtro aplicado",
+
+  "viewer_title": "Vista",
+  "editor_title": "Editor",
+  "frame_title": "Marco",
+  "frame_toggle": "Marco",
+  "frame_logo": "Logo",
+  "frame_edit_text": "Editar texto",
+  "frame_text_dialog_title": "Texto superior",
+  "frame_text_hint": "HEFESTOCS • YYYY-MM-DD",
+
+  "filters_title": "Filtros rápidos",
+  "filters_choose": "Elige un filtro",
+
+  "action_apply": "Aplicar",
+  "action_save": "Guardar",
+  "action_share": "Compartir",
+  "action_done": "Listo",
+  "action_back": "Atrás",
+  "action_close": "Cerrar"
+}

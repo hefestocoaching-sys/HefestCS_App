@@ -1,0 +1,80 @@
+name: hefestocs
+description: A new Flutter project.
+
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # UI & Icons
+  cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^10.12.0
+  carousel_slider: ^5.0.0 # Para el carrusel de la pantalla de inicio
+  flutter_screenutil: ^5.9.3 # Para UI adaptable y responsiva
+
+  # Core Functionality
+  image_picker: ^1.1.2
+  intl: ^0.20.2
+  path_provider: ^2.1.3
+  path: ^1.9.1
+  permission_handler: ^12.0.0
+  share_plus: ^12.0.0
+  url_launcher: ^6.3.0
+  provider: ^6.1.2
+  device_info_plus: ^12.2.0
+  sqflite: ^2.4.2
+  connectivity_plus: ^6.0.3
+  shared_preferences: ^2.2.2
+
+  # Image Editing & Saving
+  pro_image_editor: ^11.10.1
+  image_gallery_saver_plus: ^4.0.1
+  image: ^4.1.7
+  scrollable_positioned_list: ^0.3.8
+  vector_math: ^2.2.0
+
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.0
+  firebase_storage: ^12.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# REFACTOR: Se añaden overrides para forzar la actualización de dependencias transitivas.
+dependency_overrides:
+  characters: ^1.4.1
+  material_color_utilities: ^0.13.0
+  meta: ^1.17.0
+  test_api: ^0.7.7
+  image_picker_platform_interface: ^2.11.1
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/
+    - assets/images/
+
+  fonts:
+    - family: FINALOLD
+      fonts:
+        - asset: assets/fonts/FINALOLD.TTF
+
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700

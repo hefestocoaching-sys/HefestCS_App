@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791397230720",
+    "project_id": "hcseco-55882",
+    "storage_bucket": "hcseco-55882.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791397230720:android:7d34289cfab959aefade65",
+        "android_client_info": {
+          "package_name": "com.example.hefestocs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLvgi-8HR7z-kvlW2GJ9BE89quZ8q7H3I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

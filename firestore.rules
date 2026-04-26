@@ -14,6 +14,43 @@ service cloud.firestore {
 
     // TEMPORAL: esquema nuevo por coach.
     match /coaches/{coachId}/clients/{clientId} {
+      allow read: if true;
+      allow write: if false;
+
+      match /{document=**} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+
+    // Permitir collectionGroup queries para 'clients' (validación de códigos de invitación).
+    // Esta regla permite que collectionGroup('clients') acceda a cualquier documento clients.
+    match /{path=**}/clients/{clientId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Denegar todo lo demás.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // TEMPORAL: esquema legacy en raíz.
+    match /clients/{clientId} {
+      allow read: if true;
+      allow write: if false;
+
+      match /{document=**} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+
+    // TEMPORAL: esquema nuevo por coach.
+    match /coaches/{coachId}/clients/{clientId} {
     // TODO (producción): migrar a reglas con request.auth y/o custom claims.
       allow read: if true;
       allow write: if false;
@@ -22,6 +59,11 @@ service cloud.firestore {
         allow read: if true;
         allow write: if false;
       }
+    }
+
+    // Permitir collectionGroup queries para clientes (validación de códigos de invitación).
+    match /coaches/{coachId}/clients/{clientId} {
+      allow read: if true;
     }
 
     // Denegar todo lo demás.

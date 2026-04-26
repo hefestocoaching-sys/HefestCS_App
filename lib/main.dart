@@ -8,6 +8,7 @@ import 'package:hefestocs/providers/nutrition_navigation_provider.dart';
 import 'package:hefestocs/providers/progress_photos_provider.dart';
 import 'package:hefestocs/providers/session_provider.dart';
 import 'package:hefestocs/providers/training_navigation_provider.dart';
+import 'package:hefestocs/providers/exercise_preferences_provider.dart';
 import 'package:hefestocs/widgets/app_bootstrap.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
@@ -21,9 +22,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 🔥 Inicializa Firebase antes de arrancar la app
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // 🌎 Inicializa formato de fechas en español
   await initializeDateFormatting('es_ES', null);
@@ -45,6 +44,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TrainingNavigationProvider()),
         ChangeNotifierProvider(create: (_) => NutritionNavigationProvider()),
         ChangeNotifierProvider(create: (_) => ChartsNavigationProvider()),
+        ChangeNotifierProvider(create: (_) => ExercisePreferencesProvider()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
@@ -140,8 +140,9 @@ class MyApp extends StatelessWidget {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.symmetric(vertical: 16.h),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
           backgroundColor: AppTheme.primaryGold,
           foregroundColor: Colors.black,
           textStyle: TextStyle(

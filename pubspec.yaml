@@ -31,7 +31,7 @@ dependencies:
   provider: ^6.1.2
   device_info_plus: ^12.2.0
   sqflite: ^2.4.2
-  connectivity_plus: ^6.0.3
+  connectivity_plus: ^7.0.0
   shared_preferences: ^2.2.2
 
   # Image Editing & Saving
@@ -41,9 +41,9 @@ dependencies:
   scrollable_positioned_list: ^0.3.8
   vector_math: ^2.2.0
 
-  firebase_core: ^3.6.0
-  cloud_firestore: ^5.4.0
-  firebase_storage: ^12.0.0
+  firebase_core: ^4.4.0
+  cloud_firestore: ^6.1.2
+  firebase_storage: ^13.0.6
 
 dev_dependencies:
   flutter_test:
@@ -54,8 +54,8 @@ dev_dependencies:
 dependency_overrides:
   characters: ^1.4.1
   material_color_utilities: ^0.13.0
-  meta: ^1.17.0
-  test_api: ^0.7.7
+  meta: ^1.18.1
+  test_api: ^0.7.9
   image_picker_platform_interface: ^2.11.1
 
 flutter:

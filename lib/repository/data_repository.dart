@@ -24,17 +24,24 @@ class DataRepository {
     final hasConnection = await _hasInternetConnection();
 
     if (hasConnection) {
-      final snapshot = await _firestore.collection('clients').get();
-      final clients = snapshot.docs
-          .map((doc) => Client.fromMap({'id': doc.id, ...doc.data()}))
-          .toList();
+      try {
+        final snapshot = await _firestore.collection('clients').get();
+        final clients = snapshot.docs
+            .map((doc) => Client.fromMap({'id': doc.id, ...doc.data()}))
+            .toList();
 
-      // Guarda copia local para modo offline
-      for (var client in clients) {
-        await _dbHelper.insertClient(client);
+        // Guarda copia local para modo offline
+        for (var client in clients) {
+          await _dbHelper.insertClient(client);
+        }
+
+        return clients;
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          return await _dbHelper.getAllClients();
+        }
+        rethrow;
       }
-
-      return clients;
     } else {
       return await _dbHelper.getAllClients();
     }
@@ -45,14 +52,21 @@ class DataRepository {
     final hasConnection = await _hasInternetConnection();
 
     if (hasConnection) {
-      final doc = await _firestore.collection('clients').doc(id).get();
+      try {
+        final doc = await _firestore.collection('clients').doc(id).get();
 
-      if (doc.exists) {
-        final client = Client.fromMap({'id': doc.id, ...doc.data()!});
-        await _dbHelper.insertClient(client);
-        return client;
-      } else {
-        return null;
+        if (doc.exists) {
+          final client = Client.fromMap({'id': doc.id, ...doc.data()!});
+          await _dbHelper.insertClient(client);
+          return client;
+        } else {
+          return null;
+        }
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          return await _dbHelper.getClientById(id);
+        }
+        rethrow;
       }
     } else {
       return await _dbHelper.getClientById(id);
@@ -78,10 +92,16 @@ class DataRepository {
 
     // Si hay conexión, también actualiza Firebase
     if (hasConnection) {
-      await _firestore
-          .collection('clients')
-          .doc(client.id)
-          .set(updatedClient.toMap());
+      try {
+        await _firestore
+            .collection('clients')
+            .doc(client.id)
+            .set(updatedClient.toMap());
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') {
+          rethrow;
+        }
+      }
     } else {}
   }
 
@@ -98,7 +118,13 @@ class DataRepository {
 
     // Si hay internet, elimina también de Firebase
     if (hasConnection) {
-      await _firestore.collection('clients').doc(id).delete();
+      try {
+        await _firestore.collection('clients').doc(id).delete();
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') {
+          rethrow;
+        }
+      }
     } else {}
   }
 

@@ -3,6 +3,7 @@ import 'package:hefestocs/models/client.dart';
 import 'package:hefestocs/models/client_snapshot.dart';
 import 'package:hefestocs/services/client_data_service.dart';
 import 'package:hefestocs/services/session_service.dart';
+import 'package:hefestocs/utils/app_logger.dart';
 
 /// Store centralizado para datos del cliente
 /// Evita múltiples queries y sirve como fuente de verdad única
@@ -42,9 +43,9 @@ class ClientStore extends ChangeNotifier {
         throw Exception('No se encontró sesión activa');
       }
 
-      print('📦 [ClientStore] Cargando cliente: $clientId');
+      AppLogger.info('[ClientStore] Cargando cliente: $clientId');
       if (docPath != null) {
-        print('⚡ [ClientStore] Usando docPath directo: $docPath');
+        AppLogger.info('[ClientStore] Usando docPath directo: $docPath');
       }
 
       // Cargar datos del cliente (con docPath si está disponible)
@@ -57,9 +58,10 @@ class ClientStore extends ChangeNotifier {
       if (docPath != null) {
         try {
           _rawData = await _clientDataService.getFullDocument(docPath);
-          print('✅ [ClientStore] Payload completo cargado');
+          AppLogger.info('[ClientStore] Payload completo cargado');
         } catch (e) {
-          print('⚠️ [ClientStore] No se pudo cargar payload completo: $e');
+          AppLogger.warn(
+              '[ClientStore] No se pudo cargar payload completo: $e');
           _rawData = null;
         }
       }
@@ -68,13 +70,23 @@ class ClientStore extends ChangeNotifier {
       _isLoading = false;
       _error = null;
 
-      print('✅ [ClientStore] Cliente cargado: ${client.fullName}');
+      AppLogger.info('[ClientStore] Cliente cargado: ${client.fullName}');
       notifyListeners();
     } catch (e, stackTrace) {
-      print('❌ [ClientStore] Error al cargar cliente: $e');
-      print('Stack trace: $stackTrace');
+      AppLogger.error(
+        '[ClientStore] Error al cargar cliente',
+        error: e,
+        stackTrace: stackTrace,
+      );
 
-      _error = e.toString();
+      final errorText = e.toString();
+      if (_isPermissionDeniedError(errorText)) {
+        _error = 'No hay permisos para leer tu expediente (Firestore). '
+            'Cierra sesión e ingresa de nuevo con tu código. '
+            'Si continúa, solicita al coach/admin revisar reglas de Firestore.';
+      } else {
+        _error = errorText;
+      }
       _isLoading = false;
       _client = null;
 
@@ -102,7 +114,7 @@ class ClientStore extends ChangeNotifier {
         throw Exception('No se encontró docPath en la sesión');
       }
 
-      print('💾 [ClientStore] Actualizando payload...');
+      AppLogger.info('[ClientStore] Actualizando payload...');
       await _clientDataService.updatePayload(
         docPath: docPath,
         updates: updates,
@@ -110,11 +122,21 @@ class ClientStore extends ChangeNotifier {
 
       // Recargar datos después de actualizar
       await refresh();
-      print('✅ [ClientStore] Payload actualizado y datos refrescados');
+      AppLogger.info('[ClientStore] Payload actualizado y datos refrescados');
     } catch (e, stackTrace) {
-      print('❌ [ClientStore] Error al actualizar payload: $e');
-      print('Stack trace: $stackTrace');
+      AppLogger.error(
+        '[ClientStore] Error al actualizar payload',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
+  }
+
+  bool _isPermissionDeniedError(String errorText) {
+    final normalized = errorText.toLowerCase();
+    return normalized.contains('permission-denied') ||
+        normalized.contains('permission_denied') ||
+        normalized.contains('missing or insufficient permissions');
   }
 }

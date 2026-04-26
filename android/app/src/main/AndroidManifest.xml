@@ -1,30 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ===== PERMISOS CORREGIDOS ===== -->
     <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- Para Android 13 (API 33) y superior, este es el permiso preferido para leer imágenes. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-
-    <!-- Para Android 12 (API 32) e inferior, este permiso todavía es necesario. -->
-    <!-- `maxSdkVersion` asegura que no se pida innecesariamente en versiones más nuevas. -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-
-    <!-- ▼▼▼ CORRECCIÓN CLAVE APLICADA AQUÍ ▼▼▼ -->
-    <!-- Se elimina `maxSdkVersion` para el permiso de escritura. -->
-    <!-- Esto es CRUCIAL para que `requestLegacyExternalStorage` funcione y tu app pueda crear carpetas y guardar imágenes. -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
 
 
     <application
         android:label="HefestoCS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:enableOnBackInvokedCallback="true"
-        android:requestLegacyExternalStorage="true">
+        android:enableOnBackInvokedCallback="true">
 
         <activity
             android:name=".MainActivity"

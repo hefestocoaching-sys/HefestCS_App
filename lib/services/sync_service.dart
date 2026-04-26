@@ -17,7 +17,15 @@ class SyncService {
 
   Future<void> _downloadDataFromServer(String clientId) async {
     final docRef = _firestore.collection('clients').doc(clientId);
-    final doc = await docRef.get();
+    DocumentSnapshot<Map<String, dynamic>> doc;
+    try {
+      doc = await docRef.get();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        return;
+      }
+      rethrow;
+    }
 
     if (doc.exists) {
       final serverData = doc.data() as Map<String, dynamic>;
@@ -71,7 +79,14 @@ class SyncService {
       recordIdsToMark.add(recordMap['id'] as int);
     }
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        return;
+      }
+      rethrow;
+    }
     await _dbHelper.markBiochemistryAsSynced(recordIdsToMark);
   }
 
@@ -97,10 +112,17 @@ class SyncService {
         final uploadTask = await ref.putFile(file);
         final downloadUrl = await uploadTask.ref.getDownloadURL();
 
-        await _firestore.collection('clients').doc(clientId).update({
-          'profilePictureUrl': downloadUrl,
-          'lastUpdate': FieldValue.serverTimestamp(),
-        });
+        try {
+          await _firestore.collection('clients').doc(clientId).update({
+            'profilePictureUrl': downloadUrl,
+            'lastUpdate': FieldValue.serverTimestamp(),
+          });
+        } on FirebaseException catch (e) {
+          if (e.code == 'permission-denied') {
+            return;
+          }
+          rethrow;
+        }
 
         await _dbHelper.clearUnsyncedProfilePicture(clientId);
       } catch (e) {

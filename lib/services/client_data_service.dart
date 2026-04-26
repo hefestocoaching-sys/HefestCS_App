@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hefestocs/models/client.dart';
 import 'package:hefestocs/services/session_service.dart';
+import 'package:hefestocs/utils/app_logger.dart';
 
 class ClientDataService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -13,7 +14,9 @@ class ClientDataService {
   ///    Si se proporciona, carga directamente el documento, mucho más eficiente
   Future<Client> loadClientData(String clientId, {String? docPath}) async {
     try {
-      print('📥 [ClientDataService] Buscando datos del cliente: "$clientId"');
+      AppLogger.info(
+        '[ClientDataService] Buscando datos del cliente: "$clientId"',
+      );
 
       if (clientId.isEmpty) {
         throw Exception('ClientId está vacío');
@@ -23,14 +26,17 @@ class ClientDataService {
 
       // Si tenemos docPath, cargar directamente (mucho más eficiente)
       if (docPath != null && docPath.isNotEmpty) {
-        print('⚡ [ClientDataService] Carga directa usando docPath: $docPath');
+        AppLogger.info(
+          '[ClientDataService] Carga directa usando docPath: $docPath',
+        );
 
         try {
           doc = await _firestore.doc(docPath).get();
 
           if (!doc.exists) {
-            print(
-                '⚠️ [ClientDataService] Documento no existe en docPath, usando fallback');
+            AppLogger.warn(
+              '[ClientDataService] Documento no existe en docPath, usando fallback',
+            );
             // Si el path directo falla, hacer fallback a collectionGroup
             final querySnapshot =
                 await _firestore.collectionGroup('clients').limit(100).get();
@@ -44,16 +50,30 @@ class ClientDataService {
 
             doc = matchingDocs.first;
           } else {
-            print('✅ [ClientDataService] Documento cargado directamente');
+            AppLogger.info(
+                '[ClientDataService] Documento cargado directamente');
           }
         } catch (e) {
-          print('⚠️ [ClientDataService] Error en carga directa: $e');
-          print(
-              '🔄 [ClientDataService] Intentando fallback a collectionGroup...');
+          if (_isPermissionDeniedError(e)) {
+            throw Exception(_permissionDeniedMessage(docPath));
+          }
+
+          AppLogger.warn('[ClientDataService] Error en carga directa: $e');
+          AppLogger.info(
+            '[ClientDataService] Intentando fallback a collectionGroup...',
+          );
 
           // Fallback si hay cualquier error con el path directo
-          final querySnapshot =
-              await _firestore.collectionGroup('clients').limit(100).get();
+          QuerySnapshot<Map<String, dynamic>> querySnapshot;
+          try {
+            querySnapshot =
+                await _firestore.collectionGroup('clients').limit(100).get();
+          } catch (queryError) {
+            if (_isPermissionDeniedError(queryError)) {
+              throw Exception(_permissionDeniedMessage(docPath));
+            }
+            rethrow;
+          }
 
           final matchingDocs =
               querySnapshot.docs.where((doc) => doc.id == clientId).toList();
@@ -66,32 +86,45 @@ class ClientDataService {
         }
       } else {
         // Sin docPath - probablemente sesión antigua
-        print('⚠️ [ClientDataService] No hay docPath guardado');
+        AppLogger.warn('[ClientDataService] No hay docPath guardado');
         throw Exception(
           'Sesión incompatible. Por favor cierra sesión y vuelve a iniciar con tu código de invitación.',
         );
       }
 
-      final data = doc.data() as Map<String, dynamic>;
+      final data = _withSmaeMappings(doc.data() as Map<String, dynamic>);
 
-      print(
-          '✅ [ClientDataService] Cliente encontrado: ${data['fullName'] ?? 'Sin nombre'}');
+      AppLogger.info(
+        '[ClientDataService] Cliente encontrado: ${data['fullName'] ?? 'Sin nombre'}',
+      );
 
       // Convertir los datos de Firestore a modelo Client
       final client = Client.fromFirestore(doc.id, data);
 
       // Imprimir resumen de datos cargados
-      print('📊 [ClientDataService] Datos cargados:');
-      print('   - Nombre: ${client.fullName}');
-      print('   - Antropometrías: ${client.anthropometryHistory.length}');
-      print('   - Kcal objetivo: ${client.kcalTarget}');
-      print(
-          '   - Proteína: ${client.proteinG}g, Grasa: ${client.fatG}g, Carbs: ${client.carbG}g');
+      AppLogger.info('[ClientDataService] Datos cargados:');
+      AppLogger.info('   - Nombre: ${client.fullName}');
+      AppLogger.info(
+        '   - Antropometrías: ${client.anthropometryHistory.length}',
+      );
+      AppLogger.info('   - Kcal objetivo: ${client.kcalTarget}');
+      AppLogger.info(
+        '   - Proteína: ${client.proteinG}g, Grasa: ${client.fatG}g, Carbs: ${client.carbG}g',
+      );
+      AppLogger.info('   - Días SMAE: ${client.smaeEquivalentsByDay.length}');
 
       return client;
     } catch (e, stackTrace) {
-      print('❌ [ClientDataService] Error al cargar cliente: $e');
-      print('Stack trace: $stackTrace');
+      AppLogger.error(
+        '[ClientDataService] Error al cargar cliente',
+        error: e,
+        stackTrace: stackTrace,
+      );
+
+      if (_isPermissionDeniedError(e)) {
+        throw Exception(_permissionDeniedMessage(docPath));
+      }
+
       rethrow;
     }
   }
@@ -99,40 +132,50 @@ class ClientDataService {
   /// Stream en tiempo real de los datos del cliente
   /// Se actualiza automáticamente cuando cambian los datos en Firestore
   Stream<Client> watchClientData(String clientId) {
-    print('👀 [ClientDataService] Iniciando stream para cliente: $clientId');
+    AppLogger.info(
+        '[ClientDataService] Iniciando stream para cliente: $clientId');
 
     return _firestore
         .collectionGroup('clients')
         .snapshots()
         .asyncMap((querySnapshot) async {
       try {
-        print(
-            '🔄 [ClientDataService] Stream actualizado: ${querySnapshot.docs.length} documentos');
+        AppLogger.info(
+          '[ClientDataService] Stream actualizado: ${querySnapshot.docs.length} documentos',
+        );
 
         // Filtrar manualmente por ID
         final matchingDocs =
             querySnapshot.docs.where((doc) => doc.id == clientId).toList();
 
         if (matchingDocs.isEmpty) {
-          print(
-              '⚠️ [ClientDataService] Cliente no encontrado en stream: $clientId');
+          AppLogger.warn(
+            '[ClientDataService] Cliente no encontrado en stream: $clientId',
+          );
           throw Exception('Cliente no encontrado con ID: $clientId');
         }
 
         final doc = matchingDocs.first;
-        final data = doc.data();
+        final data = _withSmaeMappings(doc.data());
 
-        print(
-            '✅ [ClientDataService] Stream - Cliente actualizado: ${data['fullName']}');
+        AppLogger.info(
+          '[ClientDataService] Stream - Cliente actualizado: ${data['fullName']}',
+        );
 
         return Client.fromFirestore(doc.id, data);
       } catch (e) {
-        print('❌ [ClientDataService] Error procesando snapshot: $e');
+        AppLogger.error(
+          '[ClientDataService] Error procesando snapshot',
+          error: e,
+        );
         rethrow;
       }
     }).handleError((error, stackTrace) {
-      print('❌ [ClientDataService] Error en stream: $error');
-      print('Stack trace: $stackTrace');
+      AppLogger.error(
+        '[ClientDataService] Error en stream',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }, test: (error) => error is Exception);
   }
 
@@ -160,7 +203,7 @@ class ClientDataService {
   ///  - 'maintenance' si está cerca de TMB
   ///  - 'surplus' si kcalTarget > TMB estimada
   String getCalorieIndicator({
-    required int kcalTarget,
+    required double kcalTarget,
     required double weight,
     String? activityLevel,
   }) {
@@ -217,19 +260,23 @@ class ClientDataService {
     required Map<String, dynamic> updates,
   }) async {
     try {
-      print('💾 [ClientDataService] Actualizando payload en: $docPath');
-      print(
-          '📝 [ClientDataService] Datos a actualizar: ${updates.keys.join(", ")}');
+      AppLogger.info('[ClientDataService] Actualizando payload en: $docPath');
+      AppLogger.info(
+        '[ClientDataService] Datos a actualizar: ${updates.keys.join(", ")}',
+      );
 
       await _firestore.doc(docPath).set(
             updates,
             SetOptions(merge: true),
           );
 
-      print('✅ [ClientDataService] Payload actualizado exitosamente');
+      AppLogger.info('[ClientDataService] Payload actualizado exitosamente');
     } catch (e, stackTrace) {
-      print('❌ [ClientDataService] Error al actualizar payload: $e');
-      print('Stack trace: $stackTrace');
+      AppLogger.error(
+        '[ClientDataService] Error al actualizar payload',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
@@ -237,7 +284,9 @@ class ClientDataService {
   /// Obtiene el documento completo de Firestore (incluyendo payload)
   Future<Map<String, dynamic>> getFullDocument(String docPath) async {
     try {
-      print('📥 [ClientDataService] Obteniendo documento completo: $docPath');
+      AppLogger.info(
+        '[ClientDataService] Obteniendo documento completo: $docPath',
+      );
 
       final doc = await _firestore.doc(docPath).get();
 
@@ -246,14 +295,254 @@ class ClientDataService {
       }
 
       final data = doc.data() as Map<String, dynamic>;
-      print('✅ [ClientDataService] Documento completo obtenido');
+      AppLogger.info('[ClientDataService] Documento completo obtenido');
 
       return data;
     } catch (e, stackTrace) {
-      print('❌ [ClientDataService] Error al obtener documento: $e');
-      print('Stack trace: $stackTrace');
+      AppLogger.error(
+        '[ClientDataService] Error al obtener documento',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
+  }
+
+  Map<String, dynamic> _withSmaeMappings(Map<String, dynamic> source) {
+    final payload = Map<String, dynamic>.from(source);
+
+    final mealsByDay = _extractSmaeMealsByDay(payload);
+    final equivalentsByDay = _extractSmaeEquivalentsByDay(payload, mealsByDay);
+    final mealsPerDay = _extractMealsPerDay(payload, mealsByDay);
+
+    payload['smaeMealsByDay'] = mealsByDay;
+    payload['smaeEquivalentsByDay'] = equivalentsByDay;
+    payload['mealsPerDay'] = mealsPerDay;
+
+    return payload;
+  }
+
+  Map<String, Map<String, Map<String, double>>> _extractSmaeMealsByDay(
+    Map<String, dynamic> payload,
+  ) {
+    final directCandidates = [
+      payload['smaeMealsByDay'],
+      _asMap(payload['smae'])?['mealsByDay'],
+      _asMap(payload['smae_v2'])?['mealsByDay'],
+      _asMap(payload['nutritionPlan'])?['smaeMealsByDay'],
+      _asMap(payload['mealPlan'])?['smaeMealsByDay'],
+    ];
+
+    for (final candidate in directCandidates) {
+      final parsed = _parseDirectMealsByDay(candidate);
+      if (parsed.isNotEmpty) return parsed;
+    }
+
+    final roots = [
+      _asMap(payload['smae']),
+      _asMap(payload['smae_v2']),
+      _asMap(payload['nutritionPlan']),
+      _asMap(payload['mealPlan']),
+      payload,
+    ];
+
+    for (final root in roots) {
+      if (root == null) continue;
+
+      final days = _asMap(root['days']) ?? _asMap(root['dias']) ?? root;
+      final parsed = <String, Map<String, Map<String, double>>>{};
+
+      days.forEach((dayKey, dayValue) {
+        final dayMap = _asMap(dayValue);
+        if (dayMap == null) return;
+
+        final meals = _asMap(dayMap['meals']) ?? _asMap(dayMap['comidas']);
+        if (meals == null || meals.isEmpty) return;
+
+        final parsedMeals = <String, Map<String, double>>{};
+        meals.forEach((mealName, mealValue) {
+          final mealMap = _asMap(mealValue);
+          if (mealMap == null) return;
+
+          final equivalents = _asMap(mealMap['equivalents']) ??
+              _asMap(mealMap['equivalentes']) ??
+              _asMap(mealMap['groups']) ??
+              _asMap(mealMap['grupos']) ??
+              mealMap;
+
+          final parsedGroups = <String, double>{};
+          equivalents.forEach((groupName, qty) {
+            if (qty is num) {
+              parsedGroups[groupName.toString()] = qty.toDouble();
+            }
+          });
+
+          if (parsedGroups.isNotEmpty) {
+            parsedMeals[mealName.toString()] = parsedGroups;
+          }
+        });
+
+        if (parsedMeals.isNotEmpty) {
+          parsed[dayKey.toString()] = parsedMeals;
+        }
+      });
+
+      if (parsed.isNotEmpty) return parsed;
+    }
+
+    return {};
+  }
+
+  Map<String, Map<String, double>> _extractSmaeEquivalentsByDay(
+    Map<String, dynamic> payload,
+    Map<String, Map<String, Map<String, double>>> mealsByDay,
+  ) {
+    final directCandidates = [
+      payload['smaeEquivalentsByDay'],
+      _asMap(payload['smae'])?['equivalentsByDay'],
+      _asMap(payload['smae_v2'])?['equivalentsByDay'],
+      _asMap(payload['nutritionPlan'])?['smaeEquivalentsByDay'],
+      _asMap(payload['mealPlan'])?['smaeEquivalentsByDay'],
+    ];
+
+    for (final candidate in directCandidates) {
+      final parsed = _parseDirectEquivalentsByDay(candidate);
+      if (parsed.isNotEmpty) return parsed;
+    }
+
+    if (mealsByDay.isEmpty) return {};
+
+    final totalsByDay = <String, Map<String, double>>{};
+    mealsByDay.forEach((day, meals) {
+      final totals = <String, double>{};
+      meals.forEach((_, groups) {
+        groups.forEach((group, qty) {
+          totals[group] = (totals[group] ?? 0) + qty;
+        });
+      });
+      totalsByDay[day] = totals;
+    });
+
+    return totalsByDay;
+  }
+
+  Map<String, int> _extractMealsPerDay(
+    Map<String, dynamic> payload,
+    Map<String, Map<String, Map<String, double>>> mealsByDay,
+  ) {
+    final directCandidates = [
+      payload['mealsPerDay'],
+      _asMap(payload['smae'])?['mealsPerDay'],
+      _asMap(payload['smae_v2'])?['mealsPerDay'],
+      _asMap(payload['nutritionPlan'])?['mealsPerDay'],
+      _asMap(payload['mealPlan'])?['mealsPerDay'],
+    ];
+
+    for (final candidate in directCandidates) {
+      final parsed = _parseDirectMealsPerDay(candidate);
+      if (parsed.isNotEmpty) return parsed;
+    }
+
+    if (mealsByDay.isEmpty) return {};
+
+    return mealsByDay.map((day, meals) => MapEntry(day, meals.length));
+  }
+
+  Map<String, Map<String, Map<String, double>>> _parseDirectMealsByDay(
+    dynamic source,
+  ) {
+    if (source is! Map) return {};
+
+    final result = <String, Map<String, Map<String, double>>>{};
+    source.forEach((day, mealsRaw) {
+      if (mealsRaw is! Map) return;
+
+      final meals = <String, Map<String, double>>{};
+      mealsRaw.forEach((mealName, groupsRaw) {
+        if (groupsRaw is! Map) return;
+
+        final groups = <String, double>{};
+        groupsRaw.forEach((groupName, qty) {
+          if (qty is num) {
+            groups[groupName.toString()] = qty.toDouble();
+          }
+        });
+
+        if (groups.isNotEmpty) {
+          meals[mealName.toString()] = groups;
+        }
+      });
+
+      if (meals.isNotEmpty) {
+        result[day.toString()] = meals;
+      }
+    });
+
+    return result;
+  }
+
+  Map<String, Map<String, double>> _parseDirectEquivalentsByDay(
+      dynamic source) {
+    if (source is! Map) return {};
+
+    final result = <String, Map<String, double>>{};
+    source.forEach((day, groupsRaw) {
+      if (groupsRaw is! Map) return;
+
+      final groups = <String, double>{};
+      groupsRaw.forEach((groupName, qty) {
+        if (qty is num) {
+          groups[groupName.toString()] = qty.toDouble();
+        }
+      });
+
+      if (groups.isNotEmpty) {
+        result[day.toString()] = groups;
+      }
+    });
+
+    return result;
+  }
+
+  Map<String, int> _parseDirectMealsPerDay(dynamic source) {
+    if (source is! Map) return {};
+
+    final result = <String, int>{};
+    source.forEach((day, mealsCount) {
+      if (mealsCount is num) {
+        result[day.toString()] = mealsCount.toInt();
+      }
+    });
+    return result;
+  }
+
+  Map<String, dynamic>? _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map(
+        (key, val) => MapEntry(key.toString(), val),
+      );
+    }
+    return null;
+  }
+
+  bool _isPermissionDeniedError(Object error) {
+    if (error is FirebaseException) {
+      return error.code == 'permission-denied';
+    }
+
+    final text = error.toString().toLowerCase();
+    return text.contains('permission-denied') ||
+        text.contains('missing or insufficient permissions') ||
+        text.contains('permission_denied');
+  }
+
+  String _permissionDeniedMessage(String? docPath) {
+    return 'No tienes permisos para leer tu expediente en Firestore '
+        '(permission-denied). '
+        'Cierra sesión y vuelve a ingresar con tu código de invitación. '
+        'Si el problema persiste, el coach/admin debe ajustar las reglas '
+        'de Firestore para permitir lectura del path: ${docPath ?? 'sin docPath'}.';
   }
 
   // ==========================

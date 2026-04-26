@@ -3,13 +3,15 @@
 
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart'; // Usando tu dependencia
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart'; // Usando tu dependencia
 
 class GalleryIO {
   // Tu función saveTempPng, sin cambios.
-  static Future<File?> saveTempPng(Uint8List bytes, {String name = 'temp_img'}) async {
+  static Future<File?> saveTempPng(Uint8List bytes,
+      {String name = 'temp_img'}) async {
     try {
       final tempDir = await getTemporaryDirectory();
       final file = await File('${tempDir.path}/$name.png').create();
@@ -23,11 +25,15 @@ class GalleryIO {
   }
 
   // Tu función saveBytesToGallery, ahora correcta.
-  static Future<bool> saveBytesToGallery(Uint8List bytes, {String folderName = 'Progreso_HCS'}) async {
+  static Future<bool> saveBytesToGallery(Uint8List bytes,
+      {String folderName = 'Progreso_HCS'}) async {
     try {
       if (Platform.isAndroid) {
-        // Se pide el permiso correcto y moderno para guardar imágenes en la galería.
-        final status = await Permission.photos.request();
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        final status = androidInfo.version.sdkInt >= 33
+            ? await Permission.photos.request()
+            : await Permission.storage.request();
+
         if (!status.isGranted) {
           // ignore: avoid_print
           print("Permiso para acceder a las fotos denegado.");
@@ -40,10 +46,13 @@ class GalleryIO {
       String? filePath;
 
       if (Platform.isAndroid) {
-        final List<Directory>? externalStorageDirs = await getExternalStorageDirectories(type: StorageDirectory.pictures);
+        final List<Directory>? externalStorageDirs =
+            await getExternalStorageDirectories(
+                type: StorageDirectory.pictures);
         if (externalStorageDirs == null || externalStorageDirs.isEmpty) {
           // ignore: avoid_print
-          print("No se pudo acceder a los directorios de almacenamiento externo.");
+          print(
+              "No se pudo acceder a los directorios de almacenamiento externo.");
           return false;
         }
 
@@ -67,8 +76,8 @@ class GalleryIO {
         isReturnPathOfIOS: true,
       );
 
-      return (result is Map && result['isSuccess'] == true) || (result is String && result.isNotEmpty);
-
+      return (result is Map && result['isSuccess'] == true) ||
+          (result is String && result.isNotEmpty);
     } catch (e) {
       // ignore: avoid_print
       print("Error al guardar en galería: $e");

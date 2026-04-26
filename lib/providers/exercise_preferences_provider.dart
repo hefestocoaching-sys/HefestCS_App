@@ -44,7 +44,7 @@ class ExercisePreferencesProvider extends ChangeNotifier {
 
       final doc = await docRef.get();
       if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?;
+        final data = doc.data();
         final extra = data?['extra'] as Map<String, dynamic>? ?? {};
         final rawPrefs =
             extra['exercisePreferencesByMuscle'] as Map<String, dynamic>?;
@@ -90,7 +90,7 @@ class ExercisePreferencesProvider extends ChangeNotifier {
       // Usar transaction para actualizar extra['exercisePreferencesByMuscle']
       await _firestore.runTransaction((transaction) async {
         final doc = await transaction.get(docRef);
-        final data = (doc.data() as Map<String, dynamic>?) ?? {};
+        final data = doc.data() ?? {};
         final extra = (data['extra'] as Map<String, dynamic>?) ?? {};
 
         extra['exercisePreferencesByMuscle'] = preferences.toJson();
@@ -138,7 +138,7 @@ class ExercisePreferencesProvider extends ChangeNotifier {
 
       await _firestore.runTransaction((transaction) async {
         final doc = await transaction.get(docRef);
-        final data = (doc.data() as Map<String, dynamic>?) ?? {};
+        final data = doc.data() ?? {};
         final extra = (data['extra'] as Map<String, dynamic>?) ?? {};
 
         extra.remove('exercisePreferencesByMuscle');
@@ -180,7 +180,7 @@ class ExercisePreferencesProvider extends ChangeNotifier {
             return const ExercisePreferencesByMuscle();
           }
 
-          final data = doc.data() as Map<String, dynamic>?;
+          final data = doc.data();
           final extra = data?['extra'] as Map<String, dynamic>? ?? {};
           final rawPrefs =
               extra['exercisePreferencesByMuscle'] as Map<String, dynamic>?;
